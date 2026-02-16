@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Video {
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Video Source
+  sourceType    String   // "youtube" or "upload"
+  youtubeUrl    String?
+  fileName      String?
+  filePath      String?
+  
+  // Metadata
+  title         String?
+  duration      Int?     // in seconds
+  thumbnailUrl  String?
+  
+  // Analysis
+  targetAudience String  // "gen_z", "millennials", "gen_x", "baby_boomers"
+  analysisStatus String  @default("pending") // "pending", "processing", "completed", "failed"
+  
+  // Relations
+  analysis      Analysis?
+}
+
+model Analysis {
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
+  
+  videoId       String   @unique
+  video         Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  
+  // Overall Scores (0-100)
+  overallScore       Int
+  editQualityScore   Int
+  pacingScore        Int
+  retentionScore     Int
+  
+  // Feedback
+  overallFeedback    String @db.Text
+  strengths          String @db.Text  // JSON array
+  weaknesses         String @db.Text  // JSON array
+  
+  // Detailed Analysis
+  editAnalysis       String @db.Text  // JSON object
+  pacingAnalysis     String @db.Text  // JSON object
+  audioAnalysis      String @db.Text  // JSON object
+  
+  // Risk Zones
+  riskZones          String @db.Text  // JSON array of timestamps with issues
+  
+  // Recommendations
+  recommendations    String @db.Text  // JSON array
+  
+  // YouTube Benchmark Data
+  benchmarkData      String? @db.Text  // JSON object with similar videos data
+  
+  // AI Processing
+  geminiResponse     String? @db.Text
+}
+
+model BenchmarkVideo {
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
+  
+  youtubeId     String   @unique
+  title         String
+  channelName   String
+  views         BigInt
+  likes         BigInt
+  duration      Int
+  publishedAt   DateTime
+  
+  // Performance Metrics
+  avgViewDuration    Int?     // in seconds
+  retentionRate      Float?   // percentage
+  engagement         Float?   // likes/views ratio
+  
+  // Metadata
+  category      String?
+  tags          String?  @db.Text
+}

@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-[#0F172A] text-white;
+  }
+}
+
+@layer components {
+  .gradient-button {
+    @apply bg-gradient-to-r from-purple-600 to-pink-600 hover:shadow-lg transition;
+  }
+  
+  .card {
+    @apply bg-slate-800/50 backdrop-blur-lg rounded-2xl p-8 border border-slate-700;
+  }
+  
+  .card-hover {
+    @apply hover:border-purple-500/50 transition;
+  }
+}
