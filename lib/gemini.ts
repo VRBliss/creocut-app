@@ -144,10 +144,21 @@ Be specific, be honest, and focus on actionable insights that will improve reten
   // Extract JSON from response (remove markdown code blocks if present)
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
-    throw new Error('Failed to parse AI response');
+    throw new Error('Failed to parse AI response: no JSON object found in response');
   }
-  
-  const analysis = JSON.parse(jsonMatch[0]);
+
+  let analysis: AnalysisResult;
+  try {
+    analysis = JSON.parse(jsonMatch[0]);
+  } catch (parseError) {
+    throw new Error(`Failed to parse AI response as JSON: ${parseError instanceof Error ? parseError.message : 'Unknown parse error'}`);
+  }
+
+  // Validate required fields exist
+  if (typeof analysis.overallScore !== 'number' || !Array.isArray(analysis.strengths)) {
+    throw new Error('AI response is missing required fields');
+  }
+
   return analysis;
 }
 
@@ -173,6 +184,10 @@ Return a JSON object with:
   if (!jsonMatch) {
     return {};
   }
-  
-  return JSON.parse(jsonMatch[0]);
+
+  try {
+    return JSON.parse(jsonMatch[0]);
+  } catch {
+    return {};
+  }
 }
