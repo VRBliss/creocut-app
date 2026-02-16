@@ -43,32 +43,47 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      // Fetch YouTube video data
+      let ytData;
       try {
-        const ytData = await getVideoData(videoId);
-        videoData.youtubeUrl = youtubeUrl;
-        videoData.title = ytData.title;
-        videoData.duration = ytData.duration;
-        videoData.thumbnailUrl = ytData.thumbnailUrl;
-
-        // Create video record in database
-        const video = await prisma.video.create({
-          data: videoData,
-        });
-
-        // Start background analysis
-        analyzeYouTubeVideo(video.id, ytData, targetAudience).catch(console.error);
-
-        return NextResponse.json({
-          videoId: video.id,
-          message: 'Analysis started',
-        });
+        ytData = await getVideoData(videoId);
       } catch (error) {
-        console.error('YouTube error:', error);
+        console.error('YouTube API error:', error);
+        const message = error instanceof Error ? error.message : 'Failed to fetch YouTube video data';
         return NextResponse.json(
-          { error: 'Failed to fetch YouTube video data' },
+          { error: message },
           { status: 400 }
         );
       }
+
+      videoData.youtubeUrl = youtubeUrl;
+      videoData.title = ytData.title;
+      videoData.duration = ytData.duration;
+      videoData.thumbnailUrl = ytData.thumbnailUrl;
+
+      // Create video record in database
+      let video;
+      try {
+        video = await prisma.video.create({
+          data: videoData,
+        });
+      } catch (error) {
+        console.error('Database error:', error);
+        return NextResponse.json(
+          { error: 'Failed to save video data to database. Please check your database connection.' },
+          { status: 500 }
+        );
+      }
+
+      // Start background analysis
+      analyzeYouTubeVideo(video.id, ytData, targetAudience).catch(err => {
+        console.error('Background analysis error:', err);
+      });
+
+      return NextResponse.json({
+        videoId: video.id,
+        message: 'Analysis started',
+      });
     }
 
     // Handle file upload
@@ -100,12 +115,23 @@ export async function POST(req: NextRequest) {
       videoData.title = file.name.replace(/\.[^/.]+$/, ''); // Remove extension
 
       // Create video record
-      const video = await prisma.video.create({
-        data: videoData,
-      });
+      let video;
+      try {
+        video = await prisma.video.create({
+          data: videoData,
+        });
+      } catch (error) {
+        console.error('Database error:', error);
+        return NextResponse.json(
+          { error: 'Failed to save video data to database. Please check your database connection.' },
+          { status: 500 }
+        );
+      }
 
       // Start background analysis
-      analyzeUploadedVideo(video.id, file.name, targetAudience).catch(console.error);
+      analyzeUploadedVideo(video.id, file.name, targetAudience).catch(err => {
+        console.error('Background analysis error:', err);
+      });
 
       return NextResponse.json({
         videoId: video.id,
@@ -148,23 +174,27 @@ async function analyzeYouTubeVideo(
 
     // Store benchmark videos
     for (const similar of similarVideos) {
-      await prisma.benchmarkVideo.upsert({
-        where: { youtubeId: similar.id },
-        update: {
-          views: similar.views,
-          likes: similar.likes,
-        },
-        create: {
-          youtubeId: similar.id,
-          title: similar.title,
-          channelName: similar.channelName,
-          views: similar.views,
-          likes: similar.likes,
-          duration: similar.duration,
-          publishedAt: similar.publishedAt,
-          engagement: similar.engagement,
-        },
-      });
+      try {
+        await prisma.benchmarkVideo.upsert({
+          where: { youtubeId: similar.id },
+          update: {
+            views: BigInt(similar.views),
+            likes: BigInt(similar.likes),
+          },
+          create: {
+            youtubeId: similar.id,
+            title: similar.title,
+            channelName: similar.channelName,
+            views: BigInt(similar.views),
+            likes: BigInt(similar.likes),
+            duration: similar.duration,
+            publishedAt: similar.publishedAt,
+            engagement: similar.engagement,
+          },
+        });
+      } catch (err) {
+        console.error(`Failed to upsert benchmark video ${similar.id}:`, err);
+      }
     }
 
     // Create analysis record
