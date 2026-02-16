@@ -53,7 +53,7 @@ export default function HomePage() {
             AI-Powered Roast
           </h3>
           <p className="text-slate-400">
-            Get no-BS feedback on what's working and what's killing your
+            Get no-BS feedback on what&apos;s working and what&apos;s killing your
             retention
           </p>
         </div>

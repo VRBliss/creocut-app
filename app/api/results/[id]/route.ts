@@ -25,6 +25,16 @@ export async function GET(
     // Parse JSON fields
     if (video.analysis) {
       const analysis = video.analysis;
+
+      const safeJsonParse = (value: string, fallback: unknown = null) => {
+        try {
+          return JSON.parse(value);
+        } catch {
+          console.error('Failed to parse JSON field:', value.slice(0, 100));
+          return fallback;
+        }
+      };
+
       return NextResponse.json({
         video: {
           id: video.id,
@@ -44,14 +54,14 @@ export async function GET(
           pacingScore: analysis.pacingScore,
           retentionScore: analysis.retentionScore,
           overallFeedback: analysis.overallFeedback,
-          strengths: JSON.parse(analysis.strengths),
-          weaknesses: JSON.parse(analysis.weaknesses),
-          editAnalysis: JSON.parse(analysis.editAnalysis),
-          pacingAnalysis: JSON.parse(analysis.pacingAnalysis),
-          audioAnalysis: JSON.parse(analysis.audioAnalysis),
-          riskZones: JSON.parse(analysis.riskZones),
-          recommendations: JSON.parse(analysis.recommendations),
-          benchmarkData: analysis.benchmarkData ? JSON.parse(analysis.benchmarkData) : null,
+          strengths: safeJsonParse(analysis.strengths, []),
+          weaknesses: safeJsonParse(analysis.weaknesses, []),
+          editAnalysis: safeJsonParse(analysis.editAnalysis, { transitions: '', cutQuality: '', visualEffects: '' }),
+          pacingAnalysis: safeJsonParse(analysis.pacingAnalysis, { rhythm: '', engagement: '', momentum: '' }),
+          audioAnalysis: safeJsonParse(analysis.audioAnalysis, { musicChoice: '', soundDesign: '', audienceAlignment: '' }),
+          riskZones: safeJsonParse(analysis.riskZones, []),
+          recommendations: safeJsonParse(analysis.recommendations, []),
+          benchmarkData: analysis.benchmarkData ? safeJsonParse(analysis.benchmarkData, null) : null,
         },
       });
     }

@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   Video,
   TrendingUp,
@@ -95,17 +96,21 @@ const audienceLabels: Record<string, string> = {
 
 export default function ResultsPage() {
   const params = useParams();
-  const router = useRouter();
   const [video, setVideo] = useState<VideoData | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     const fetchResults = async () => {
       try {
         const response = await fetch(`/api/results/${params.id}`);
         const data = await response.json();
+
+        if (cancelled) return;
 
         if (!response.ok) {
           throw new Error(data.error || 'Failed to fetch results');
@@ -115,18 +120,26 @@ export default function ResultsPage() {
         setAnalysis(data.analysis);
 
         // If still processing, poll for updates
-        if (data.video.analysisStatus === 'processing') {
-          setTimeout(fetchResults, 3000);
+        if (data.video.analysisStatus === 'processing' || data.video.analysisStatus === 'pending') {
+          timeoutRef.current = setTimeout(fetchResults, 3000);
         } else {
           setLoading(false);
         }
       } catch (err) {
+        if (cancelled) return;
         setError(err instanceof Error ? err.message : 'An error occurred');
         setLoading(false);
       }
     };
 
     fetchResults();
+
+    return () => {
+      cancelled = true;
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
   }, [params.id]);
 
   const formatTime = (seconds: number) => {
@@ -240,9 +253,11 @@ export default function ResultsPage() {
         <div className="card mb-8 p-6">
           <div className="flex items-start gap-6">
             {video.thumbnailUrl && (
-              <img
+              <Image
                 src={video.thumbnailUrl}
                 alt={video.title || 'Video thumbnail'}
+                width={192}
+                height={108}
                 className="w-48 h-auto rounded-lg"
               />
             )}

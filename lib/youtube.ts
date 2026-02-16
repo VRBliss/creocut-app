@@ -23,8 +23,8 @@ export interface BenchmarkVideoData {
   id: string;
   title: string;
   channelName: string;
-  views: number;
-  likes: number;
+  views: bigint;
+  likes: bigint;
   duration: number;
   publishedAt: Date;
   engagement: number; // likes/views ratio
@@ -135,8 +135,9 @@ export async function searchSimilarVideos(
       const contentDetails = video.contentDetails!;
       const statistics = video.statistics!;
 
-      const views = parseInt(statistics.viewCount || '0');
-      const likes = parseInt(statistics.likeCount || '0');
+      const views = BigInt(statistics.viewCount || '0');
+      const likes = BigInt(statistics.likeCount || '0');
+      const viewsNum = Number(views);
 
       benchmarkVideos.push({
         id: video.id || '',
@@ -146,7 +147,7 @@ export async function searchSimilarVideos(
         likes,
         duration: parseDuration(contentDetails.duration || ''),
         publishedAt: new Date(snippet.publishedAt || ''),
-        engagement: views > 0 ? likes / views : 0,
+        engagement: viewsNum > 0 ? Number(likes) / viewsNum : 0,
       });
     }
 
@@ -175,7 +176,7 @@ export async function getBenchmarkInsights(
     };
   }
 
-  const avgViews = similarVideos.reduce((sum, v) => sum + v.views, 0) / similarVideos.length;
+  const avgViews = similarVideos.reduce((sum, v) => sum + Number(v.views), 0) / similarVideos.length;
   const avgEngagement = similarVideos.reduce((sum, v) => sum + v.engagement, 0) / similarVideos.length;
 
   const videoEngagement = videoData.views > 0 ? videoData.likes / videoData.views : 0;
@@ -189,16 +190,20 @@ export async function getBenchmarkInsights(
 
   const insights: string[] = [];
 
-  if (videoData.views > avgViews) {
+  if (videoData.views > avgViews && avgViews > 0) {
     insights.push(`Your video is outperforming similar content with ${((videoData.views / avgViews - 1) * 100).toFixed(1)}% more views`);
-  } else {
+  } else if (videoData.views > 0 && avgViews > 0) {
     insights.push(`Similar videos average ${((avgViews / videoData.views - 1) * 100).toFixed(1)}% more views - there's room for growth`);
+  } else {
+    insights.push('Not enough view data to compare performance');
   }
 
-  if (videoEngagement > avgEngagement) {
+  if (videoEngagement > avgEngagement && avgEngagement > 0) {
     insights.push(`Your engagement rate is ${((videoEngagement / avgEngagement - 1) * 100).toFixed(1)}% higher than similar videos`);
-  } else {
+  } else if (videoEngagement > 0 && avgEngagement > 0) {
     insights.push(`Engagement could be improved - similar videos have ${((avgEngagement / videoEngagement - 1) * 100).toFixed(1)}% better like ratios`);
+  } else {
+    insights.push('Not enough engagement data to compare');
   }
 
   return {
