@@ -1,5 +1,9 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
+if (!process.env.GEMINI_API_KEY) {
+  console.warn('WARNING: GEMINI_API_KEY environment variable is not set');
+}
+
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 export interface VideoAnalysisInput {
@@ -74,6 +78,10 @@ const audienceProfiles = {
 };
 
 export async function analyzeVideoWithGemini(input: VideoAnalysisInput): Promise<AnalysisResult> {
+  if (!process.env.GEMINI_API_KEY) {
+    throw new Error('GEMINI_API_KEY environment variable is not configured');
+  }
+
   const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
   const audienceProfile = audienceProfiles[input.targetAudience];

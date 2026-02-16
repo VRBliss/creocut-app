@@ -1,5 +1,9 @@
 import { google } from 'googleapis';
 
+if (!process.env.YOUTUBE_API_KEY) {
+  console.warn('WARNING: YOUTUBE_API_KEY environment variable is not set');
+}
+
 const youtube = google.youtube({
   version: 'v3',
   auth: process.env.YOUTUBE_API_KEY,
@@ -23,8 +27,8 @@ export interface BenchmarkVideoData {
   id: string;
   title: string;
   channelName: string;
-  views: bigint;
-  likes: bigint;
+  views: number;
+  likes: number;
   duration: number;
   publishedAt: Date;
   engagement: number; // likes/views ratio
@@ -59,38 +63,41 @@ function parseDuration(duration: string): number {
 }
 
 export async function getVideoData(videoId: string): Promise<YouTubeVideoData> {
-  try {
-    const response = await youtube.videos.list({
-      part: ['snippet', 'contentDetails', 'statistics'],
-      id: [videoId],
-    });
-
-    const video = response.data.items?.[0];
-    if (!video) {
-      throw new Error('Video not found');
-    }
-
-    const snippet = video.snippet!;
-    const contentDetails = video.contentDetails!;
-    const statistics = video.statistics!;
-
-    return {
-      id: videoId,
-      title: snippet.title || '',
-      description: snippet.description || '',
-      duration: parseDuration(contentDetails.duration || ''),
-      thumbnailUrl: snippet.thumbnails?.high?.url || snippet.thumbnails?.default?.url || '',
-      channelName: snippet.channelTitle || '',
-      views: parseInt(statistics.viewCount || '0'),
-      likes: parseInt(statistics.likeCount || '0'),
-      publishedAt: new Date(snippet.publishedAt || ''),
-      category: snippet.categoryId || '',
-      tags: snippet.tags || [],
-    };
-  } catch (error) {
-    console.error('Error fetching YouTube video data:', error);
-    throw new Error('Failed to fetch video data from YouTube');
+  if (!process.env.YOUTUBE_API_KEY) {
+    throw new Error('YOUTUBE_API_KEY environment variable is not configured');
   }
+
+  const response = await youtube.videos.list({
+    part: ['snippet', 'contentDetails', 'statistics'],
+    id: [videoId],
+  });
+
+  const video = response.data.items?.[0];
+  if (!video) {
+    throw new Error('Video not found');
+  }
+
+  const snippet = video.snippet;
+  const contentDetails = video.contentDetails;
+  const statistics = video.statistics;
+
+  if (!snippet || !contentDetails || !statistics) {
+    throw new Error('Incomplete video data returned from YouTube API');
+  }
+
+  return {
+    id: videoId,
+    title: snippet.title || '',
+    description: snippet.description || '',
+    duration: parseDuration(contentDetails.duration || ''),
+    thumbnailUrl: snippet.thumbnails?.high?.url || snippet.thumbnails?.default?.url || '',
+    channelName: snippet.channelTitle || '',
+    views: parseInt(statistics.viewCount || '0'),
+    likes: parseInt(statistics.likeCount || '0'),
+    publishedAt: new Date(snippet.publishedAt || ''),
+    category: snippet.categoryId || '',
+    tags: snippet.tags || [],
+  };
 }
 
 export async function searchSimilarVideos(
@@ -131,13 +138,14 @@ export async function searchSimilarVideos(
     const benchmarkVideos: BenchmarkVideoData[] = [];
 
     for (const video of videosResponse.data.items || []) {
-      const snippet = video.snippet!;
-      const contentDetails = video.contentDetails!;
-      const statistics = video.statistics!;
+      const snippet = video.snippet;
+      const contentDetails = video.contentDetails;
+      const statistics = video.statistics;
 
-      const views = BigInt(statistics.viewCount || '0');
-      const likes = BigInt(statistics.likeCount || '0');
-      const viewsNum = Number(views);
+      if (!snippet || !contentDetails || !statistics) continue;
+
+      const views = parseInt(statistics.viewCount || '0');
+      const likes = parseInt(statistics.likeCount || '0');
 
       benchmarkVideos.push({
         id: video.id || '',
@@ -147,7 +155,7 @@ export async function searchSimilarVideos(
         likes,
         duration: parseDuration(contentDetails.duration || ''),
         publishedAt: new Date(snippet.publishedAt || ''),
-        engagement: viewsNum > 0 ? Number(likes) / viewsNum : 0,
+        engagement: views > 0 ? likes / views : 0,
       });
     }
 
