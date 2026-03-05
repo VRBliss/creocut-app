@@ -1,3 +1,4 @@
+<!-- Force rebuild -->
 # CreoCut - AI Video Analysis Platform
 
 CreoCut is a comprehensive AI-powered video analysis platform that helps content creators optimize their videos for maximum retention. The app leverages Google's Gemini AI to provide detailed feedback on edit quality, pacing, and effectiveness based on target audience demographics.
