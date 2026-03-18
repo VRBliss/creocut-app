@@ -74,8 +74,7 @@ const audienceProfiles = {
 };
 
 export async function analyzeVideoWithGemini(input: VideoAnalysisInput): Promise<AnalysisResult> {
-  const model = genAI.getGenerativeModel({ model: model: 'gemini-1.5-flash-latest' });
-
+  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
   const audienceProfile = audienceProfiles[input.targetAudience];
   
   const prompt = `You are a senior video editor and content strategist analyzing a video for maximum retention.
@@ -152,7 +151,7 @@ Be specific, be honest, and focus on actionable insights that will improve reten
 }
 
 export async function analyzeVideoDescription(description: string, targetAudience: string): Promise<Partial<AnalysisResult>> {
-  const model = genAI.getGenerativeModel({ model: model: 'gemini-1.5-flash-latest' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
 
   const prompt = `Based on this video description, provide initial insights about potential strengths and areas of concern for ${targetAudience} audience:
 
